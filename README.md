@@ -1,48 +1,52 @@
 # Requirements
+
 - python2.7
 - tensorflow 0.12
-   - CPU: `pip install tensorflow==0.12.0`
-   - GPU: `pip install tensorflow-gpu==0.12.0`
+  - CPU: `pip install tensorflow==0.12.0`
+    was able to install using these command from 3.8:
+    python -m pip install --upgrade https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-0.12.0-py3-none-any.whl
+  - GPU: `pip install tensorflow-gpu==0.12.0`
 - nltk, cmudict and stopwords
-   - `import nltk; nltk.download("cmudict"); nltk.download("stopwords")`
+  user python CMD to run this next part
+  - `import nltk; nltk.download("cmudict"); nltk.download("stopwords")`
 - gensim
-   - `pip install gensim`
+  - `pip install gensim`
 - sklearn
-   - `pip install sklearn`
+  - `pip install sklearn`
 - numpy
-   - `pip install numpy`
+  - `pip install numpy`
 
 # Data / Models
 
 - datasets/gutenberg/data.tgz: sonnet data, with train/valid/test splits
-- pretrain_word2vec/dim100/*: pre-trained word2vec model
+- pretrain_word2vec/dim100/\*: pre-trained word2vec model
 - trained_model/model.tgz: trained sonnet model
 
 # Pre-training Word Embeddings
 
-- The pre-trained word2vec model has already been supplied: pretrain_word2vec/dim100/*
+- The pre-trained word2vec model has already been supplied: pretrain_word2vec/dim100/\*
 - It was trained on 34M Gutenberg poetry data: [download link](https://ibm.box.com/s/yj38zwrk21q584y1y9qkjt1huf5nepuu)
 - If you want to train your own word embeddings, you can use the python script (uses gensim's word2vec)
-   * `python pretrain_word2vec.py`
+  - `python pretrain_word2vec.py`
 
 # Training the Sonnet Model
 
 1. Extract the data; it should produce the train/valid/test splits
-   * `cd datasets/gutenberg; tar -xvzf data.tgz`
+   - `cd datasets/gutenberg; tar -xvzf data.tgz`
 1. Unzip the pre-trained word2vec model
-   * `gunzip pretrain_word2vec/dim100/*`
+   - `gunzip pretrain_word2vec/dim100/*`
 1. Set up model hyper-parameters and other settings, which are all defined in **config.py**
-   * the default configuration is the optimal configuration used in the paper (documented [here](http://anthology.aclweb.org/attachments/P/P18/P18-1181.Notes.pdf))
+   - the default configuration is the optimal configuration used in the paper (documented [here](http://anthology.aclweb.org/attachments/P/P18/P18-1181.Notes.pdf))
 1. Run `python sonnet_train.py`
-   * takes about 2-3 hours on a single K80 GPU to train 30 epochs
+   - takes about 2-3 hours on a single K80 GPU to train 30 epochs
 
 # Generating Sonnet Quatrain
 
 1. Extract the trained model
-   * `cd trained_model; tar -xvzf model.tgz`
+   - `cd trained_model; tar -xvzf model.tgz`
 1. Run `python sonnet_gen.py -m trained_model`
-   * the default configuration is the generation configuration used in the paper
-   * takes about a minute to generate one quatrain on CPU (GPU not necessary)
+   - the default configuration is the generation configuration used in the paper
+   - takes about a minute to generate one quatrain on CPU (GPU not necessary)
 
 ```
 usage: sonnet_gen.py [-h] -m MODEL_DIR [-n NUM_SAMPLES] [-r RM_THRESHOLD]
@@ -71,7 +75,7 @@ optional arguments:
   -v, --verbose         increase output verbosity
   -p SAVE_PICKLE, --save-pickle SAVE_PICKLE
                         save samples in a pickle (list of quatrains)
-```      
+```
 
 # Generated Quatrains:
 
@@ -83,17 +87,17 @@ Temperature = 0.6 - 0.8
   02  [0.44]  no longer when he twas, while in his day
   03  [0.00]  at first to pass in all delightful ways
   04  [0.40]  around him, charming and of all his days
-  
-  
+
+
 python sonnet_gen.py -m trained_model/ -d 2
-  
+
 Temperature = 0.6 - 0.8
   01  [0.44]  shall i behold him in his cloudy state
   02  [0.00]  for just but tempteth me to stop and pray
   03  [0.00]  a cry: if it will drag me, find no way
   04  [0.40]  from pardon to him, who will stand and wait
-  
-  
+
+
 ```
 
 # Crowdflower and Expert Evaluation
@@ -101,6 +105,7 @@ Temperature = 0.6 - 0.8
 - Annotations can be found in the folder: evaluation_annotation/
 
 # Media Coverage
+
 - [New Scientist](https://www.newscientist.com/article/2175301-ai-creates-shakespearean-sonnets-and-theyre-actually-quite-good/) (or view the full article [here](media_coverage/new_scientist.jpg))
 - [Times UK](https://www.thetimes.co.uk/article/computers-produce-poetry-by-the-meter-vk80077zl) (or view the full article without subscription [here](http://htmlpreview.github.io/?https://github.com/jhlau/deepspeare/blob/master/media_coverage/uk_times.html))
 - [Daily Mail](http://www.dailymail.co.uk/sciencetech/article-6000619/Can-spot-real-Shakespeare-sonnet-AI-learns-write-poetry.html)

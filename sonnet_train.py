@@ -106,11 +106,11 @@ def run_epoch(sess, word_batches, char_batches, rhyme_batches, model, pname, is_
     for bi, batch_type in enumerate(mixed_batch_types):
 
         if batch_type == 0 and train_lm:
-    
+
             b = mixed_batches[batch_type][word_batch_id]
 
             #reset model state if it's a different set of documents
-            if prev_doc != b[2][0]: 
+            if prev_doc != b[2][0]:
                 model_state = zero_state
                 prev_doc = b[2][0]
 
@@ -128,15 +128,15 @@ def run_epoch(sess, word_batches, char_batches, rhyme_batches, model, pname, is_
             total_words += sum(b[3])
 
             word_batch_id += 1
-        
+
         elif batch_type == 1 and train_pm:
-    
+
             b = mixed_batches[batch_type][char_batch_id]
 
             feed_dict        = {model.pm_enc_x: b[0], model.pm_enc_xlen: b[1], model.pm_cov_mask: b[2]}
             cost, attns, _,  = sess.run([model.pm_mean_cost, model.pm_attentions, pm_train_op], feed_dict)
             pm_costs        += cost
-            
+
             char_batch_id += 1
 
             if not is_training:
@@ -202,7 +202,7 @@ def compute_pentameter_loss(sess, model, pentameter_file, label, y_scores, y_tru
         charxid[pad_symbol], model.pentameter, idxchar, False)
 
     for bi, b in enumerate(char_batch):
-        
+
         feed_dict = {model.pm_enc_x: b[0], model.pm_enc_xlen: b[1], model.pm_cov_mask: b[2]}
         attentions, costs, logits, mius = sess.run([model.pm_attentions, model.pm_costs, model.pm_logits,
             model.mius], feed_dict)
@@ -357,7 +357,7 @@ def main():
                 for j in range(len(rhyme_pattern[i])):
                     print ("%.2f" % np.mean(rhyme_pattern[i][j])).rjust(7),
                 print
-                
+
 
         #save vocab information and config
         if cf.save_model:

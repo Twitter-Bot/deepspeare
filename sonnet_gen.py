@@ -8,7 +8,7 @@ Date:           Aug 17
 
 import argparse
 import os
-import cPickle
+import _pickle as cPickle
 import sys
 import random
 import codecs
@@ -97,12 +97,12 @@ def main():
         for _ in range(args.num_samples):
 
             #generate some random sentences
-            print "\nTemperature =", args.temp_min, "-", args.temp_max
+            print ("\nTemperature =", args.temp_min, "-", args.temp_max)
             q, probs = mgen.generate(sess, idxword, idxchar, charxid, wordxchar, wordxid[pad_symbol],
                 wordxid[end_symbol], wordxid[unk_symbol], charxid[" "], avoid_symbols, stopwords,
                 args.temp_min, args.temp_max, 4, 400, args.sent_sample, args.rm_threshold, args.verbose)
             for line_id, line in enumerate(q):
-                print "  %02d  [%.2f]  %s" % (line_id+1, probs[line_id], line)
+                print ("%02d  [%.2f]  %s" % (line_id+1, probs[line_id], line))
             sys.stdout.flush()
             quatrains.append(q)
 

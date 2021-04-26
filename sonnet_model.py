@@ -14,7 +14,6 @@ class SonnetModel(object):
         gather_ids = tf.concat(1, [tf.expand_dims(ids, 1), tf.expand_dims(xlen-1, 1)])
         return tf.gather_nd(h, gather_ids)
 
-
     def gated_layer(self, s, h, sdim, hdim):
 
         update_w = tf.get_variable("update_w", [sdim+hdim, hdim])
@@ -27,7 +26,7 @@ class SonnetModel(object):
         z = tf.sigmoid(tf.matmul(tf.concat(1, [s, h]), update_w) + update_b)
         r = tf.sigmoid(tf.matmul(tf.concat(1, [s, h]), reset_w) + reset_b)
         c = tf.tanh(tf.matmul(tf.concat(1, [s, r*h]), c_w) + c_b)
-        
+
         return (1-z)*h + z*c
 
 
@@ -93,7 +92,7 @@ class SonnetModel(object):
         with tf.variable_scope("rhyme_model"):
             self.init_rm(is_training, batch_size, char_type_size)
 
-       
+
     # -- language model network
     def init_lm(self, is_training, batch_size, word_type_size):
 
@@ -102,18 +101,24 @@ class SonnetModel(object):
         #shared word embeddings (used by encoder and decoder)
         self.word_embedding = tf.get_variable("word_embedding", [word_type_size, cf.word_embedding_dim],
             initializer=tf.random_uniform_initializer(-0.05/cf.word_embedding_dim, 0.05/cf.word_embedding_dim))
-    
+
         #########
         #decoder#
         #########
 
         #define lstm cells
+        #cf.lem_dem_dim = 200
+
         lm_dec_cell = tf.nn.rnn_cell.LSTMCell(cf.lm_dec_dim, use_peepholes=True, forget_bias=1.0)
         if is_training and cf.keep_prob < 1.0:
+            #update the cell. if keep_prob is at 1 then don't need a dropout layer
             lm_dec_cell = tf.nn.rnn_cell.DropoutWrapper(lm_dec_cell, output_keep_prob=cf.keep_prob)
+        #create RNN of LSTM cells
         self.lm_dec_cell = tf.nn.rnn_cell.MultiRNNCell([lm_dec_cell] * cf.lm_dec_layer_size)
 
         #initial states
+        #self.lm_dec_cell is now a layer of RNN LSTM
+        #setting current lm_initial_state to all zeros.
         self.lm_initial_state = self.lm_dec_cell.zero_state(batch_size, tf.float32)
         state = self.lm_initial_state
 
@@ -130,7 +135,7 @@ class SonnetModel(object):
         fw_hidden = self.get_last_hidden(self.char_encodings[0], self.pm_enc_xlen)
         char_inputs = tf.concat(1, [fw_hidden, self.char_encodings[1][:,0,:]])
         char_inputs = tf.reshape(char_inputs, [batch_size, -1, cf.pm_enc_dim*2]) #reshape into same dimension as inputs
-        
+
         #concat word and char encodings
         inputs = tf.concat(2, [word_inputs, char_inputs])
         #inputs = word_inputs
@@ -206,7 +211,7 @@ class SonnetModel(object):
         #reshape both into [batch_size*len, hidden_dim]
         dec_outputs = tf.reshape(dec_outputs, [-1, cf.lm_dec_dim])
         context     = tf.reshape(context, [-1, cf.lm_enc_dim*2])
-        
+
         #combine context and decoder hidden state with a gated unit
         with tf.variable_scope("gated_unit"):
             hidden = self.gated_layer(context, dec_outputs, cf.lm_enc_dim*2, cf.lm_dec_dim)
@@ -292,7 +297,7 @@ class SonnetModel(object):
 
         #get last hidden states
         char_enc = self.get_last_hidden(char_enc, self.pm_enc_xlen)
-        
+
         #slice it into target_words and context words
         target  = char_enc[:batch_size,:]
         context = char_enc[batch_size:,:]
@@ -314,7 +319,7 @@ class SonnetModel(object):
 
         if not is_training:
             return
-        
+
         self.rm_train_op = tf.train.AdamOptimizer(cf.rm_learning_rate).minimize(self.rm_cost)
 
 
@@ -352,7 +357,7 @@ class SonnetModel(object):
                         miu_w    = tf.get_variable("miu_w", [cf.pm_dec_dim+1, cf.pm_attend_dim])
                         miu_b    = tf.get_variable("miu_b", [cf.pm_attend_dim], initializer=tf.constant_initializer())
                         miu_v    = tf.get_variable("miu_v", [cf.pm_attend_dim, 1])
-                    
+
                     #position attention
                     miu     = tf.minimum(tf.sigmoid(tf.matmul(tf.tanh(tf.matmul(tf.concat(1,
                         [dec_hidden, prev_miu]), miu_w) + miu_b), miu_v)) + prev_miu, tf.ones([batch_size, 1]))
@@ -361,7 +366,7 @@ class SonnetModel(object):
                         dtype=tf.float32)
                     pos_lp  = -(pos - miu_p)**2 / (2 * tf.reshape(tf.tile([tf.square(cf.sigma)], [batch_size]),
                         [batch_size,-1]))
-            
+
                     #char encoding attention
                     pos_weight = tf.reshape(tf.exp(pos_lp), [-1, 1])
                     inp_concat = tf.concat(1, [enc_hiddens * pos_weight,
@@ -503,7 +508,7 @@ class SonnetModel(object):
                 self.lm_hist: hist, self.lm_hlen: hlen,
                 self.pm_enc_x: xchar, self.pm_enc_xlen: xchar_len})
 
-            #avoid words previously generated            
+            #avoid words previously generated
             avoid_words = filter_stop_symbol(sent + hist[0])
             freq_words  = get_freq_words(sent + hist[0], 2) #avoid any words that occur >= N times
             avoid_words = avoid_words | freq_words | set(sent[-3:] + last_words + avoid_symbols + [unk_symbol_id])
@@ -529,7 +534,7 @@ class SonnetModel(object):
                     return sent, state, pm_loss
                 else:
                     return None, None, None
-    
+
 
     # -- compute pentameter loss
     def eval_pm_loss(self, sess, sent, end_symbol, space_id, idxchar, charxid, idxword, wordxchar):
@@ -581,7 +586,7 @@ class SonnetModel(object):
             last_words  = []
             total_words = 0
             total_lines = 0
-            
+
             return state, prev_state, x, xchar, xchar_len, sonnet, sent_probs, last_words, total_words, total_lines, \
                 rhyme_pttn[0], rhyme_pttn[1]
 
