@@ -110,7 +110,6 @@ def main():
     if args.save_pickle and len(quatrains) > 0:
         cPickle.dump(quatrains, open(args.save_pickle, "w"))
 
-
 if __name__ == "__main__":
 
     #load config

@@ -11,7 +11,9 @@ class SonnetModel(object):
     def get_last_hidden(self, h, xlen):
 
         ids = tf.range(tf.shape(xlen)[0])
+        #concat- concats tensors along one dimension
         gather_ids = tf.concat(1, [tf.expand_dims(ids, 1), tf.expand_dims(xlen-1, 1)])
+        #tf.gather_nd(params, indices, batch_dims=0, name=None)
         return tf.gather_nd(h, gather_ids)
 
     def gated_layer(self, s, h, sdim, hdim):
@@ -99,51 +101,80 @@ class SonnetModel(object):
         cf = self.config
 
         #shared word embeddings (used by encoder and decoder)
+        #.get_variable either gets the variable or creates a new one
+        #generates self.word_embedding numpy array which is word_type_size by cf.word_embedding_dim
         self.word_embedding = tf.get_variable("word_embedding", [word_type_size, cf.word_embedding_dim],
             initializer=tf.random_uniform_initializer(-0.05/cf.word_embedding_dim, 0.05/cf.word_embedding_dim))
 
         #########
         #decoder#
         #########
+        #encoder decoder is for sequence length differences
 
         #define lstm cells
         #cf.lem_dem_dim = 200
-
+        #use from tensorflow-addons tfa.rnn.PeepholeLSTMCell(600) forget_bias is default 1.0
         lm_dec_cell = tf.nn.rnn_cell.LSTMCell(cf.lm_dec_dim, use_peepholes=True, forget_bias=1.0)
+        print(lm_dec_cell,[lm_dec_cell] * cf.lm_dec_layer_size)
         if is_training and cf.keep_prob < 1.0:
             #update the cell. if keep_prob is at 1 then don't need a dropout layer
             lm_dec_cell = tf.nn.rnn_cell.DropoutWrapper(lm_dec_cell, output_keep_prob=cf.keep_prob)
-        #create RNN of LSTM cells
+        #create RNN of LSTM cells and makes multiple lm_dec_cells in ?tuple? with multiplication
         self.lm_dec_cell = tf.nn.rnn_cell.MultiRNNCell([lm_dec_cell] * cf.lm_dec_layer_size)
 
         #initial states
         #self.lm_dec_cell is now a layer of RNN LSTM
         #setting current lm_initial_state to all zeros.
+        #zero_state is the initializer and can be used for LSTM, GRU, RNN
+        #initialize state with the same batch_size as what we use
+        #batch_size has to do with shape of zero state ie input vector
         self.lm_initial_state = self.lm_dec_cell.zero_state(batch_size, tf.float32)
+        #create state variable that is the initialized state of the shape of the LSTM cell
         state = self.lm_initial_state
 
         #pad symbol vocab ID = 0; create mask = 1.0 where vocab ID > 0 else 0.0
+        #.cast casts a tensor into a different type. In this case, dtype = int32. so maybe converting
+        #float32 numbers to int32 numbers
+        #.greater takes the greater value.
+        #.zero creates a tensor with all elements set to zero.
+        #lm_x is the placeholder-must changed somewhere which would prompt this type of setup
         lm_mask = tf.cast(tf.greater(self.lm_x, tf.zeros(tf.shape(self.lm_x), dtype=tf.int32)), dtype=tf.float32)
 
         #embedding lookup
+        #looks up the embeddings
+        #looks up (params,ids)
+        #word_inputs would be text-vectorizations
         word_inputs = tf.nn.embedding_lookup(self.word_embedding, self.lm_x)
         if is_training and cf.keep_prob < 1.0:
+            #if it's training and we aren't certain of keeping, then dropout 1-(keep-prob)*100%
             word_inputs = tf.nn.dropout(word_inputs, cf.keep_prob)
 
+
+
         #process character encodings
+
         #concat last hidden state of fw RNN with first hidden state of bw RNN
+        #Represent the character encodings by concatenating the last forward
+        #and first backward hidden states.
+        #character encodings are used to help make more sense of the language,
+        #also passed to pm model for syllable stress
         fw_hidden = self.get_last_hidden(self.char_encodings[0], self.pm_enc_xlen)
         char_inputs = tf.concat(1, [fw_hidden, self.char_encodings[1][:,0,:]])
         char_inputs = tf.reshape(char_inputs, [batch_size, -1, cf.pm_enc_dim*2]) #reshape into same dimension as inputs
 
         #concat word and char encodings
+        #inputs are a combination of character encoding inputs and word encodings
         inputs = tf.concat(2, [word_inputs, char_inputs])
         #inputs = word_inputs
 
         #apply mask to zero out pad embeddings
+        #tf.expand_dims(input, axis, name=None)
         inputs = inputs * tf.expand_dims(lm_mask, -1)
 
         #dynamic rnn
+        #keras has lots of types of RNN's. Should use masking and padding to handle variable sequence length
+        #final_state is updated state and is fed back into itself so it has an updated state
+        #keras RNN doesn't seem to output state at all. How do we feed state back to itself?
         dec_outputs, final_state = tf.nn.dynamic_rnn(self.lm_dec_cell, inputs, sequence_length=self.lm_xlen, \
             dtype=tf.float32, initial_state=self.lm_initial_state)
         self.lm_final_state = final_state
