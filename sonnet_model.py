@@ -33,17 +33,29 @@ class SonnetModel(object):
 
 
     def selective_encoding(self, h, s, hdim):
-
+        #create h1 and h2 shape from first and second element of history(h)
         h1 = tf.shape(h)[0]
         h2 = tf.shape(h)[1]
+        #reshape history and (s)full_encodings
         h_ = tf.reshape(h, [-1, hdim])
         s_ = tf.reshape(tf.tile(s, [1, h2]), [-1, hdim])
 
+        #attend matrices are single dim matrices used in matmul later
+        #attend must be purely for changing the structure of matrices
+        #attend_b is a 1 dim matrix of Tensors
         attend_w = tf.get_variable("attend_w", [hdim*2, hdim])
         attend_b = tf.get_variable("attend_b", [hdim], initializer=tf.constant_initializer())
 
+        #sigmoid function that takes the modified history,
+        #concat -concatenates tensors along 1 dimension
+        #concats the history and full encodings along one dimension
+        #multiplies one dim attend_w with concat result
+        #adds the result to attend_b(a 1 dim array of 0. tensors)
+        #why add a bunch of zeros? we'll find out later on when we print it
+        #probably to convert it to tensors
         g = tf.sigmoid(tf.matmul(tf.concat(1, [h_, s_]), attend_w) + attend_b)
 
+        #reshapes a tensor
         return tf.reshape(h_* g, [h1, h2, -1])
 
 
@@ -115,7 +127,6 @@ class SonnetModel(object):
         #cf.lem_dem_dim = 200
         #use from tensorflow-addons tfa.rnn.PeepholeLSTMCell(600) forget_bias is default 1.0
         lm_dec_cell = tf.nn.rnn_cell.LSTMCell(cf.lm_dec_dim, use_peepholes=True, forget_bias=1.0)
-        print(lm_dec_cell,[lm_dec_cell] * cf.lm_dec_layer_size)
         if is_training and cf.keep_prob < 1.0:
             #update the cell. if keep_prob is at 1 then don't need a dropout layer
             lm_dec_cell = tf.nn.rnn_cell.DropoutWrapper(lm_dec_cell, output_keep_prob=cf.keep_prob)
@@ -184,33 +195,51 @@ class SonnetModel(object):
         #########################
 
         #embedding lookup
+        #embedding lookup
+        #looks up the embeddings
+        #looks up (params,ids)
+        #word_inputs would be text-vectorizations
         hist_inputs = tf.nn.embedding_lookup(self.word_embedding, self.lm_hist)
         if is_training and cf.keep_prob < 1.0:
             hist_inputs = tf.nn.dropout(hist_inputs, cf.keep_prob)
 
         #encoder lstm cell
+        #create encoding cell. similar set up as decode cell.
         lm_enc_cell = tf.nn.rnn_cell.LSTMCell(cf.lm_enc_dim, forget_bias=1.0)
         if is_training and cf.keep_prob < 1.0:
             lm_enc_cell = tf.nn.rnn_cell.DropoutWrapper(lm_enc_cell, output_keep_prob=cf.keep_prob)
 
         #history word encodings
+        #similar to dynamic_rnn but bidirectional_dynamic_rnn
+        #doc say it's been replaced with keras.layers.bidirectional(keras.layers.RNN(cell),)
         hist_outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw=lm_enc_cell, cell_bw=lm_enc_cell,
             inputs=hist_inputs, sequence_length=self.lm_hlen, dtype=tf.float32)
 
         #full history encoding
+        #[:,-1,:] pulls out the last column of the 3d array.
+        #how did they know that hist_outputs is a 4d array?
         full_encoding = tf.concat(1, [hist_outputs[0][:,-1,:], hist_outputs[1][:,0,:]])
 
         #concat fw and bw hidden states
+        # reshaping hist_outputs
         hist_outputs = tf.concat(2, hist_outputs)
 
         #selective encoding
+        #pre-defined function
+        #selectively filters less useful context words
         with tf.variable_scope("selective_encoding"):
+            #normalized history output. words that are more important are weighted higher
+            #just the word embeddings
             hist_outputs = self.selective_encoding(hist_outputs, full_encoding, cf.lm_enc_dim*2)
 
         #attention (concat)
+
         with tf.variable_scope("lm_attention"):
+            #attend_w may be weights
             attend_w = tf.get_variable("attend_w", [cf.lm_enc_dim*2+cf.lm_dec_dim, cf.lm_attend_dim])
+            #flat array of tensors
             attend_b = tf.get_variable("attend_b", [cf.lm_attend_dim], initializer=tf.constant_initializer())
+
             attend_v = tf.get_variable("attend_v", [cf.lm_attend_dim, 1])
 
         enc_steps = tf.shape(hist_outputs)[1]
