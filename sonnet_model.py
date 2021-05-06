@@ -31,7 +31,6 @@ class SonnetModel(object):
 
         return (1-z)*h + z*c
 
-
     def selective_encoding(self, h, s, hdim):
         #create h1 and h2 shape from first and second element of history(h)
         h1 = tf.shape(h)[0]
@@ -161,7 +160,6 @@ class SonnetModel(object):
             word_inputs = tf.nn.dropout(word_inputs, cf.keep_prob)
 
 
-
         #process character encodings
 
         #concat last hidden state of fw RNN with first hidden state of bw RNN
@@ -233,7 +231,7 @@ class SonnetModel(object):
             hist_outputs = self.selective_encoding(hist_outputs, full_encoding, cf.lm_enc_dim*2)
 
         #attention (concat)
-
+        #variable_scope seems to change the variable created but why?
         with tf.variable_scope("lm_attention"):
             #attend_w may be weights
             attend_w = tf.get_variable("attend_w", [cf.lm_enc_dim*2+cf.lm_dec_dim, cf.lm_attend_dim])
@@ -242,10 +240,13 @@ class SonnetModel(object):
 
             attend_v = tf.get_variable("attend_v", [cf.lm_attend_dim, 1])
 
+        #shape returns a tensor containing the shape of the input tensor
         enc_steps = tf.shape(hist_outputs)[1]
         dec_steps = tf.shape(dec_outputs)[1]
 
         #prepare encoder and decoder
+        #tf.tile duplicates the tensor/array based on the multiples provided
+        #that correspond to depth.
         hist_outputs_t = tf.tile(hist_outputs, [1, dec_steps, 1])
         dec_outputs_t  = tf.reshape(tf.tile(dec_outputs, [1, 1, enc_steps]),
             [batch_size, -1, cf.lm_dec_dim])
@@ -256,6 +257,7 @@ class SonnetModel(object):
         e = tf.matmul(tf.tanh(tf.matmul(hist_dec_concat, attend_w) + attend_b), attend_v)
         e = tf.reshape(e, [-1, enc_steps])
 
+        #using the encoded
         #mask out pad symbols to compute alpha and weighted sum of history words
         alpha    = tf.reshape(tf.nn.softmax(e), [batch_size, -1, 1])
         context  = tf.reduce_sum(tf.reshape(alpha * hist_outputs_t,

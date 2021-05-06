@@ -30,6 +30,55 @@ print("it is working")
 # print("printing here",attend_b[0])
 
 
-attend_v = tf.compat.v1.get_variable("attend_v", [10, 1])
-print(attend_v)
+# attend_v = tf.compat.v1.get_variable("attend_v", [10, 1])
+# print(attend_v)
 
+# file = open('file_path', 'w')
+# file.write('hello world !')
+# file.close()
+
+# # 2) without using with statement
+# file = open('file_path', 'w')
+# try:
+#     file.writes('hello world')
+# finally:
+#     file.close()
+
+# def selective_encoding(x):
+#   y="hello"
+#   print(x)
+
+# with tf.compat.v1.variable_scope("selective_encoding"):
+#   print(y)
+
+
+class Name():
+  def selective_encoding(self,x):
+    print(x)
+  def anotherfxn(self,y):
+    x="hello"
+    print(x)
+    with tf.compat.v1.variable_scope("changeX"):
+      z=x+"zzzz"
+      print(x)
+    print(z.name)
+
+
+newClassTest=Name()
+newClassTest.anotherfxn("hlala")
+
+
+# hist_outputs_t = tf.tile([5,5,5], [1])
+
+# tiledTensor=tf.tile(hist_outputs_t,[2])
+# print(tiledTensor)
+
+# a = tf.constant([[1,2,3],[4,5,6]], tf.int32)
+# b = tf.constant([2,1], tf.int32)
+# print(tf.tile(a, b))
+#output should be
+# tf.Tensor(
+# [[1 2 3]
+#  [4 5 6]
+#  [1 2 3]
+#  [4 5 6]], shape=(4, 3), dtype=int32)
