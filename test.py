@@ -25,7 +25,6 @@ print("it is working")
 # #create RNN of LSTM cells
 # lm_dec_cell = tf.compat.v1.nn.rnn_cell.MultiRNNCell([lm_dec_cell] * 1)
 
-
 # attend_b = tf.compat.v1.get_variable("attend_b", [10], initializer=tf.constant_initializer())
 # print("printing here",attend_b[0])
 

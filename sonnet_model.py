@@ -274,7 +274,7 @@ class SonnetModel(object):
         dec_outputs = tf.reshape(dec_outputs, [-1, cf.lm_dec_dim])
         context     = tf.reshape(context, [-1, cf.lm_enc_dim*2])
 
-        #combine context and decoder hidden state with a gated unit
+        #combine context and decoder hidden state with a gated unit(GRU)
         with tf.variable_scope("gated_unit"):
             hidden = self.gated_layer(context, dec_outputs, cf.lm_enc_dim*2, cf.lm_dec_dim)
             #hidden = dec_outputs
